@@ -1,3 +1,6 @@
+
+"""Бот для контроля домашней работы."""
+
 import logging
 import os
 import time
@@ -25,7 +28,7 @@ HOMEWORK_STATUSES = {
 
 
 def send_message(bot, message):
-    """Отправка сообщения в телеграм"""
+    """Отправка сообщения в телеграм."""
     text = message
     try:
         bot.send_message(TELEGRAM_CHAT_ID, text)
@@ -35,7 +38,7 @@ def send_message(bot, message):
 
 
 def get_api_answer(current_timestamp):
-    """ Проверка ответа сервера """
+    """Проверка ответа сервера."""
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
     try:
@@ -52,7 +55,7 @@ def get_api_answer(current_timestamp):
 
 
 def check_response(response):
-    """Проверка API на корректность """
+    """Проверка API на корректность."""
     if type(response) != dict:
         raise TypeError('Не словарь')
     try:
@@ -68,7 +71,7 @@ def check_response(response):
 
 
 def parse_status(homework):
-    """ Определение статуса работы """
+    """Определение статуса работы."""
     if 'homework_name' not in homework:
         raise KeyError('homework_name отсутствует в homework')
     homework_name = homework['homework_name']
@@ -83,7 +86,7 @@ def parse_status(homework):
 
 
 def check_tokens():
-    """ Проверка всех необходимых токенов """
+    """Проверка всех необходимых токенов."""
     if all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]):
         logging.info('Проверка токенов')
         return True
@@ -93,7 +96,7 @@ def check_tokens():
 
 
 def main():
-    """ Основная функция программы """
+    """Основная функция программы."""
     current_date = int(time.time()) - (604800 * 3)
     bot = Bot(token=TELEGRAM_TOKEN)
     logging.basicConfig(
