@@ -1,10 +1,10 @@
 import logging
-import requests
 import os
 import time
 
-from telegram import Bot
+import requests
 from dotenv import load_dotenv
+from telegram import Bot
 
 load_dotenv()
 
@@ -89,6 +89,7 @@ def check_tokens():
         return True
     else:
         logging.critical('Отсутствие токенов!')
+        return False
 
 
 def main():
