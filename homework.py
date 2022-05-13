@@ -19,7 +19,6 @@ RETRY_TIME = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
-
 HOMEWORK_STATUSES = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
     'reviewing': 'Работа взята на проверку ревьюером.',
@@ -31,10 +30,12 @@ def send_message(bot, message):
     """Отправка сообщения в телеграм."""
     text = message
     try:
+        logging.info('Отправляем сообщение в Telegram')
         bot.send_message(TELEGRAM_CHAT_ID, text)
     except Exception:
-        logging.error('Cбой при отправке сообщения в Telegram')
         raise Exception('Cбой при отправке сообщения в Telegram')
+    else:
+        logging.info('Сообщение отправлено')
 
 
 def get_api_answer(current_timestamp):
@@ -44,27 +45,24 @@ def get_api_answer(current_timestamp):
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=params)
     except ValueError:
-        logging.error('Нет ответа api')
         raise ValueError
 
     if response.status_code == requests.codes.ok:
         return response.json()
     else:
-        logging.error(f'Ошибка соединения {response.status_code}')
         raise TypeError
 
 
 def check_response(response):
     """Проверка API на корректность."""
-    if type(response) != dict:
+    if not isinstance(response, dict):
         raise TypeError('Не словарь')
     try:
         homeworks = response['homeworks']
     except IndexError:
-        logging.error('Нет ключа homework')
         raise IndexError('Нет ключа homework')
     else:
-        if type(homeworks) != list:
+        if not isinstance(homeworks, list):
             raise TypeError('Домашки пришли не в виде списка')
         else:
             return homeworks[0]
@@ -72,8 +70,11 @@ def check_response(response):
 
 def parse_status(homework):
     """Определение статуса работы."""
+    print(homework)
     if 'homework_name' not in homework:
         raise KeyError('homework_name отсутствует в homework')
+    if 'status' not in homework:
+        raise KeyError('status отсутствует в homework')
     homework_name = homework['homework_name']
     homework_status = homework['status']
     verdict = HOMEWORK_STATUSES[homework_status]
@@ -82,46 +83,41 @@ def parse_status(homework):
                    f'"{homework_name}". {verdict}')
         return message
     else:
-        raise Exception('Статус работы не определен')
+        raise KeyError('Статус работы не определен')
 
 
 def check_tokens():
     """Проверка всех необходимых токенов."""
-    if all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]):
-        logging.info('Проверка токенов')
-        return True
-    else:
-        logging.critical('Отсутствие токенов!')
-        return False
+    return all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID])
 
 
 def main():
     """Основная функция программы."""
     current_date = int(time.time()) - (604800 * 3)
     bot = Bot(token=TELEGRAM_TOKEN)
+    message = ''
+    while True:
+        try:
+            check_tokens()
+            api_answer = get_api_answer(current_date)
+            check_api = check_response(api_answer)
+            if message != parse_status(check_api):
+                message = parse_status(check_api)
+                send_message(bot, message)
+        except Exception as error:
+            message = f'Сбой в работе программы: {error}'
+            logging.info('Отправлена иноформация о ошибке')
+            send_message(bot, message)
+            time.sleep(RETRY_TIME)
+        finally:
+            time.sleep(RETRY_TIME)
+
+
+if __name__ == '__main__':
     logging.basicConfig(
         level=logging.INFO,
         filename='main.log',
         filemode='w',
         format='%(asctime)s, %(levelname)s, %(message)s'
     )
-    while True:
-        try:
-            check_tokens()
-            api_answer = get_api_answer(current_date)
-            check_api = check_response(api_answer)
-            message = parse_status(check_api)
-            time.sleep(RETRY_TIME)
-
-        except Exception as error:
-            message = f'Сбой в работе программы: {error}'
-            logging.info('Отправлена иноформация о ошибке')
-            send_message(bot, message)
-            time.sleep(RETRY_TIME)
-        else:
-            logging.info('Отправка иноформации по домашней работе')
-            send_message(bot, message)
-
-
-if __name__ == '__main__':
     main()
